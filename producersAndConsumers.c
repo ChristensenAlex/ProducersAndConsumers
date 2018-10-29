@@ -21,7 +21,7 @@ int use_ptr = 0;
 int count = 0;
 
 //Running total
-int buckets[5] = {0};
+long buckets[5] = {0};
 pthread_mutex_t bucket_lock;
 
 //condition variables
@@ -43,6 +43,14 @@ int get(){
 	return value;	
 }
 
+void commit(int values[], FILE* output){
+	Pthread_mutex_lock(&file_lock);
+	for(int i = 0; values[i] != '\0'; i++){
+		fprintf(output, "%d\n", values[i]);
+	}
+	Pthread_mutex_unlock(&file_lock);
+}
+
 // Creates rand numbers to pipe to consumer
 void producer(){
 	for (int i = 0; TRUE; i++){
@@ -59,22 +67,26 @@ void producer(){
 }
 
 // Adds numbers to running total
-void consumer(){
+void consumer(FILE* output){
 	while(TRUE){
-		//get number from queue
-		Pthread_mutex_lock(&circular_lock);
-		while (count == 0){
-			Pthread_cond_wait(&fill, &circular_lock);
+		int temporary_log[100];
+		for(int i = 0; i < 100; i++){
+			//get number from queue
+			Pthread_mutex_lock(&circular_lock);
+			while (count == 0){
+				Pthread_cond_wait(&fill, &circular_lock);
+			}
+			int value = get();
+			Pthread_cond_signal(&empty);
+			Pthread_mutex_unlock(&circular_lock);
+			
+			//add to running total
+			Pthread_mutex_lock(&bucket_lock);
+			buckets[value]++;
+			Pthread_mutex_unlock(&bucket_lock);
+			temporary_log[i] = value; //I print after release lock, so other processes can run.
 		}
-		int value = get();
-		Pthread_cond_signal(&empty);
-		Pthread_mutex_unlock(&circular_lock);
-		
-		//add to running total
-		Pthread_mutex_lock(&bucket_lock);
-		buckets[value]++;
-		Pthread_mutex_unlock(&bucket_lock);
-		printf("%d \n", value); //I print after release lock, so other processes can run.
+		commit(temporary_log, &output);
 	}
 }
 
@@ -85,12 +97,13 @@ void consumer(){
 //FUTURE PLAN: this will exit after total reaches a large number
 int main (int argc, char *argv[]){
 	FILE* output = fopen("output.txt", "w+");
+	fprintf(output, "OUTPUT FILE\n");
 	pthread_t p1, p2, p3, c1, c2;
 	Pthread_create(&p1, NULL, &producer, NULL);
 	Pthread_create(&p2, NULL, &producer, NULL);
 	Pthread_create(&p3, NULL, &producer, NULL);
-	Pthread_create(&c1, NULL, &consumer, NULL);
-	Pthread_create(&c2, NULL, &consumer, NULL);
+	Pthread_create(&c1, NULL, &consumer, &output);
+	Pthread_create(&c2, NULL, &consumer, &output);
 
 	sleep(3);
 	
