@@ -9,6 +9,7 @@
 #define MAX 100
 
 // Uses coarse grained locks, optimized for a single processor. Running on multipul processors won't provide speedup, until fine-grained locks are used.
+pthread_mutex_t file_lock;
 
 //Helpers for circular array
 pthread_mutex_t circular_lock;	//Lock for entire circular array
@@ -83,18 +84,27 @@ void consumer(){
 //This spins up the producers and consumers
 //FUTURE PLAN: this will exit after total reaches a large number
 int main (int argc, char *argv[]){
+	FILE* output = fopen("output.txt", "w+");
 	pthread_t p1, p2, p3, c1, c2;
-	Pthread_create(&p1, NULL, producer, NULL);
-	Pthread_create(&p2, NULL, producer, NULL);
-	Pthread_create(&p3, NULL, producer, NULL);
-	Pthread_create(&c1, NULL, consumer, NULL);
-	Pthread_create(&c2, NULL, consumer, NULL);
+	Pthread_create(&p1, NULL, &producer, NULL);
+	Pthread_create(&p2, NULL, &producer, NULL);
+	Pthread_create(&p3, NULL, &producer, NULL);
+	Pthread_create(&c1, NULL, &consumer, NULL);
+	Pthread_create(&c2, NULL, &consumer, NULL);
+
+	sleep(3);
+	
+	pthread_kill(&p1);
+	pthread_kill(&p2);
+	pthread_kill(&p3);
+	pthread_kill(&c1);
+	pthread_kill(&c2);
+
 
 	//both producer and consumer run till killed, so joins not included.
-	while(TRUE){
-		for(int i = 0; i < 5; i++){
-			printf("     i:%d value:%d     ", i, buckets[i]);
-		}
-
+	for(int i = 0; i < 5; i++){
+		printf("   %d: %ld", i, buckets[i]);
 	}
+				
+
 }
