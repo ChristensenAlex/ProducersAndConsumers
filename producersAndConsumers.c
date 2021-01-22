@@ -9,7 +9,7 @@
 #define FALSE 0
 #define MAX 100
 
-// Uses coarse grained locks, optimized for a single processor. Running on multipul processors won't provide speedup, until fine-grained locks are used.
+// Uses coarse grained locks, optimized for a single processor. Running on multiple processors won't provide speedup, until fine-grained locks are used.
 pthread_mutex_t file_lock;
 FILE* output;
 
